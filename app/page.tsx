@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { Trophy, Star, Zap, Gift, CheckCircle, XCircle } from "lucide-react"
+import { ethers } from "ethers"
 
 interface Question {
   id: number
@@ -70,6 +71,26 @@ const questions: Question[] = [
       "This quiz rewards participants with NFTs or Celo-based tokens for correct answers, combining education with blockchain rewards!",
   },
 ]
+
+// Add type declaration for window.ethereum
+declare global {
+  interface Window {
+    ethereum?: {
+      request: (args: { method: string; params?: any[] }) => Promise<any>;
+      on: (event: string, callback: (accounts: string[]) => void) => void;
+      removeListener: (event: string, callback: (accounts: string[]) => void) => void;
+    };
+  }
+}
+
+// QuizRewards contract ABI - only the functions we need
+const QUIZ_REWARDS_ABI = [
+  "function completeQuiz(uint256 score) public",
+  "function hasUserCompletedQuiz(address user) public view returns (bool)",
+  "function getUserScore(address user) public view returns (uint256)"
+]
+
+const QUIZ_REWARDS_ADDRESS = "0x6fdbbf392c4e8819eff782033b5ff6f8105a7479"
 
 export default function FarcasterQuiz() {
   const [isLoaded, setIsLoaded] = useState(false)
@@ -137,14 +158,41 @@ export default function FarcasterQuiz() {
 
   const handleClaimReward = async () => {
     try {
-      // In a real implementation, this would interact with smart contracts
-      // For now, we'll show a success message and potentially open a cast composer
+      // Check if user has a wallet provider
+      if (!window.ethereum) {
+        throw new Error("Please install a Web3 wallet like MetaMask to claim your reward")
+      }
+
+      // Request account access
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' })
+      const userAddress = accounts[0]
+
+      // Create provider and signer
+      const provider = new ethers.BrowserProvider(window.ethereum)
+      const signer = await provider.getSigner()
+
+      // Create contract instance
+      const quizRewards = new ethers.Contract(QUIZ_REWARDS_ADDRESS, QUIZ_REWARDS_ABI, signer)
+
+      // Check if user has already completed the quiz
+      const hasCompleted = await quizRewards.hasUserCompletedQuiz(userAddress)
+      if (hasCompleted) {
+        throw new Error("You have already claimed your reward for this quiz")
+      }
+
+      // Complete quiz and mint reward
+      const tx = await quizRewards.completeQuiz(score)
+      await tx.wait()
+
+      // Share result on Farcaster
       await sdk.actions.composeCast({
-        text: `🎉 Just completed the Farcaster Quiz and scored ${score}/${questions.length}! 🧠✨\n\nBuilding on @farcaster and @celo is amazing! 🚀`,
+        text: `🎉 Just completed the Farcaster Quiz and scored ${score}/${questions.length}! 🧠✨\n\nBuilding on @farcaster and @celo is amazing! 🚀\n\nClaimed my reward NFT on Celo!`,
         embeds: [window.location.href],
       })
     } catch (error) {
-      console.error("Failed to share result:", error)
+      console.error("Failed to claim reward:", error)
+      alert(error)
+      // You might want to show an error message to the user here
     }
   }
 
