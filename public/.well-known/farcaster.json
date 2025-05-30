@@ -1,0 +1,27 @@
+{
+  "accountAssociation": {
+    "header": "eyJmaWQiOjEyMzQ1LCJ0eXBlIjoiY3VzdG9keSIsImtleSI6IjB4MTIzNDU2Nzg5MGFiY2RlZiJ9",
+    "payload": "eyJkb21haW4iOiJxdWl6LmZhcmNhc3Rlci5hcHAifQ==",
+    "signature": "MHgxMjM0NTY3ODkwYWJjZGVmZ2hpams="
+  },
+  "frame": {
+    "version": "1",
+    "name": "Farcaster Quiz Challenge",
+    "iconUrl": "/quiz-logo.png",
+    "homeUrl": "/",
+    "imageUrl": "/quiz-preview.png",
+    "buttonTitle": "🧠 Start Quiz",
+    "splashImageUrl": "/quiz-logo.png",
+    "splashBackgroundColor": "#8B5CF6",
+    "webhookUrl": "/api/webhook",
+    "subtitle": "Test your knowledge, earn rewards",
+    "description": "An interactive quiz game that rewards users with NFTs and Celo tokens for correct answers. Test your knowledge of Farcaster and blockchain technology!",
+    "screenshotUrls": ["/screenshot1.png", "/screenshot2.png", "/screenshot3.png"],
+    "primaryCategory": "game",
+    "tags": ["quiz", "education", "rewards", "nft", "celo", "farcaster"],
+    "heroImageUrl": "/hero-image.png",
+    "tagline": "Learn, Play, Earn",
+    "requiredChains": ["eip155:42220"],
+    "requiredCapabilities": ["actions.ready", "actions.composeCast", "wallet.getEthereumProvider"]
+  }
+}
