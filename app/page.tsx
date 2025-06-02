@@ -85,12 +85,33 @@ declare global {
 
 // QuizRewards contract ABI - only the functions we need
 const QUIZ_REWARDS_ABI = [
-  "function completeQuiz(uint256 score) public",
-  "function hasUserCompletedQuiz(address user) public view returns (bool)",
-  "function getUserScore(address user) public view returns (uint256)"
+  {
+    "inputs": [{"internalType": "uint256", "name": "score", "type": "uint256"}],
+    "name": "completeQuiz",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "address", "name": "user", "type": "address"}],
+    "name": "hasUserCompletedQuiz",
+    "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "address", "name": "user", "type": "address"}],
+    "name": "getUserScore",
+    "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+    "stateMutability": "view",
+    "type": "function"
+  }
 ]
 
-const QUIZ_REWARDS_ADDRESS = "0x6fdbbf392c4e8819eff782033b5ff6f8105a7479"
+const QUIZ_REWARDS_ADDRESS = "0xf6DB91402619C3D22678aDd3B10F495105690D95"
+
+// Celo Alfajores RPC URL
+const CELO_RPC_URL = "https://alfajores-forno.celo-testnet.org"
 
 export default function FarcasterQuiz() {
   const [isLoaded, setIsLoaded] = useState(false)
@@ -171,8 +192,49 @@ export default function FarcasterQuiz() {
       const provider = new ethers.BrowserProvider(window.ethereum)
       const signer = await provider.getSigner()
 
-      // Create contract instance
-      const quizRewards = new ethers.Contract(QUIZ_REWARDS_ADDRESS, QUIZ_REWARDS_ABI, signer)
+      // Create contract instance with explicit provider
+      const quizRewards = new ethers.Contract(
+        QUIZ_REWARDS_ADDRESS,
+        QUIZ_REWARDS_ABI,
+        signer
+      )
+
+      // Set up network configuration for Celo Alfajores
+      if (!window.ethereum) {
+        throw new Error("Please install a Web3 wallet like MetaMask to claim your reward")
+      }
+      
+      try {
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: '0xaef3' }], // Chain ID for Celo Alfajores
+        })
+      } catch (switchError: any) {
+        // This error code indicates that the chain has not been added to MetaMask
+        if (switchError.code === 4902) {
+          try {
+            await window.ethereum.request({
+              method: 'wallet_addEthereumChain',
+              params: [{
+                chainId: '0xaef3',
+                chainName: 'Celo Alfajores Testnet',
+                nativeCurrency: {
+                  name: 'CELO',
+                  symbol: 'CELO',
+                  decimals: 18
+                },
+                rpcUrls: [CELO_RPC_URL],
+                blockExplorerUrls: ['https://alfajores.celoscan.io']
+              }]
+            })
+          } catch (addError) {
+            console.error('Error adding Celo Alfajores network:', addError)
+            throw new Error('Please add Celo Alfajores network to your wallet')
+          }
+        } else {
+          throw switchError
+        }
+      }
 
       // Check if user has already completed the quiz
       const hasCompleted = await quizRewards.hasUserCompletedQuiz(userAddress)
@@ -189,10 +251,22 @@ export default function FarcasterQuiz() {
         text: `🎉 Just completed the Farcaster Quiz and scored ${score}/${questions.length}! 🧠✨\n\nBuilding on @farcaster and @celo is amazing! 🚀\n\nClaimed my reward NFT on Celo!`,
         embeds: [window.location.href],
       })
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to claim reward:", error)
-      alert(error)
-      // You might want to show an error message to the user here
+      
+      // Handle specific error cases
+      if (error.code === 4902 && window.ethereum) {
+        alert('Please add Celo Alfajores network to your wallet')
+      } else if (error.reason) {
+        // Handle ethers.js specific errors
+        alert(`Transaction failed: ${error.reason}`)
+      } else if (error.message) {
+        // Handle general errors
+        alert(error.message)
+      } else {
+        // Handle unknown errors
+        alert('Failed to claim reward. Please try again.')
+      }
     }
   }
 
